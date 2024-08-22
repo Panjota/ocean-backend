@@ -1,46 +1,53 @@
-const express = require('express');
+const express = require("express");
 const app = express();
 app.use(express.json());
 
-app.get('/', function(req, res) {
-    res.send('Hello, World!');
-});
+const { MongoClient, ObjectId } = require("mongodb");
+const url = "mongodb://127.0.0.1:27017";
+const dbName = "backend-agosto-24";
+const client = new MongoClient(url);
 
+async function main() {
+    await client.connect();
+    console.info("Connected to the database");
+    const db = client.db(dbName);
+    const collection = db.collection("herois");
+    
+    app.get("/herois", async function (req, res) {
+        const herois = await collection.find().toArray();
+        res.send(herois);
+    });
 
-app.get('/oi', function(req, res) {
-    res.send('Olá, mundo!');
-});
+    app.post("/herois", async function (req, res) {
+        const novoHeroi = req.body;
+        await collection.insertOne(novoHeroi);
+        res.send("Heroi criado com sucesso!");
+    });
 
-const lista =["Mulher Maravilhar", "Capitã Marvel", "Homem de Ferro"]
+    app.get("/herois/:id", async function (req, res) {
+        const id = req.params.id;
+        const heroi = await collection.findOne(
+            {_id: new ObjectId(id)});
+        res.send(heroi)
+    })
 
-app.get('/lista', function(req, res) {
-    res.send(lista.filter(Boolean));
-});
+    app.put("/herois/:id", async function (req, res) {
+        const id = req.params.id;
+        const novoNome = req.body;
+        await collection.updateOne(
+            {_id: new ObjectId(id)}, 
+            {$set: novoNome})
+        res.send("Heroi alterado com sucesso!");
+    })
 
-app.post('/lista', function(req, res) {
-    console.log(req.body);
-    const item = req.body.nome;
-    lista.push(item);
-    res.send("Adicionado com sucesso!");    
-});
+    app.delete("/herois/:id", async function (req, res) {
+        const id = req.params.id;
+        await collection.deleteOne(
+            {_id: new ObjectId(id)});
+        res.send("Heroi deletado com sucesso!");
+    })
 
-app.get("/lista/:id", function(req, res){
-    const id = req.params.id - 1;
-    const item = lista[id];
-    res.send(item);
-})
+    app.listen(3000);
+}
 
-app.put("/lista/:id", function(req, res){
-    const id = req.params.id - 1;
-    const item = req.body.nome;
-    lista[id] = item;
-    res.send("Alterado com sucesso!");
-})
-
-app.delete("/lista/:id", function(req, res){
-    const id = req.params.id - 1;
-    delete lista[id]
-    res.send("Removido com sucesso!");
-})
-
-app.listen(3000)
+main();
